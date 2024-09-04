@@ -52,12 +52,12 @@ func upgradeSites(outputPath string) error {
 		createDir(outputPath, siteConfig.Spec.SkupperNamespace)
 	}
 
-	err = upgradeConfigMapSkupperSites(cli, outputPath)
+	err = upgradeConfigMapSkupperSites(cli, outputPath, uidToSiteConfig)
 	if err != nil {
 		log.Fatalf("Error upgrading site: %v: %v\n", namespace, err)
 	}
 
-	err = upgradeTokens(cli, outputPath)
+	err = upgradeTokens(cli, outputPath, uidToSiteConfig)
 	if err != nil {
 		log.Fatalf("Error upgrading secrets: %v\n", err)
 	}

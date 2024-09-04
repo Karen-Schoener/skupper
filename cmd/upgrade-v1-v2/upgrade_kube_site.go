@@ -72,11 +72,7 @@ func readConfigMap(ctx context.Context, namespace string, name string, cli *clie
 	return cm, err
 }
 
-func upgradeConfigMapSkupperSites(cli *client.KubeClient, outputPath string) error {
-	uidToSiteConfig, err := getUidToSiteConfig(cli)
-	if err != nil {
-		return fmt.Errorf("Error getting uid to site configs: %w", err.Error())
-	}
+func upgradeConfigMapSkupperSites(cli *client.KubeClient, outputPath string, uidToSiteConfig map[string]*types.SiteConfig) error {
 	//log.Printf("TMPDBG: upgradeSites: uidToSiteConfigs=%+v\n", spew.Sdump(uidToSiteConfig))
 
 	for _, siteConfig := range uidToSiteConfig {
@@ -112,6 +108,8 @@ func upgradeConfigMapSkupperSite(cli *client.KubeClient, namespace string, outpu
 		return fmt.Errorf("Error reading siteConfig: %w", err.Error())
 	}
 
+	//log.Printf("TMPDBG: upgradeConfigMapSkupperSite: spew.Sdump(siteConfig)=%+v\n", spew.Sdump(siteConfig))
+
 	// TODO: Should probably validate similar to CmdSiteCreate.ValidateInput
 	// in internal/cmd/skupper/site/kube/site_create.go
 
@@ -119,6 +117,7 @@ func upgradeConfigMapSkupperSite(cli *client.KubeClient, namespace string, outpu
 	if err != nil {
 		return fmt.Errorf("Error in v1ToV2SkupperSite: %w", err.Error())
 	}
+	//log.Printf("TMPDBG: upgradeConfigMapSkupperSite: v2 CR resource=%+v\n", spew.Sdump(resource))
 
 	filepath := filepath.Join(outputPath, fmt.Sprintf("%s-site.yaml", siteConfig.Spec.SkupperName))
 

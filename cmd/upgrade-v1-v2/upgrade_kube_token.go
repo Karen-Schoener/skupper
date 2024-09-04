@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"log"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,12 +26,7 @@ func readConnectionTokens(ctx context.Context, namespace string, labelSelector s
 	return secrets.Items, nil
 }
 
-func upgradeTokens(cli *client.KubeClient, outputPath string) error {
-	uidToSiteConfig, err := getUidToSiteConfig(cli)
-	if err != nil {
-		return fmt.Errorf("Error getting uid to site configs: %w", err.Error())
-	}
-
+func upgradeTokens(cli *client.KubeClient, outputPath string, uidToSiteConfig map[string]*types.SiteConfig) error {
 	for _, siteConfig := range uidToSiteConfig {
 		targetNamespaceToLinkCmd := map[string]string{}
 
@@ -51,16 +46,16 @@ func upgradeTokens(cli *client.KubeClient, outputPath string) error {
 				log.Printf("TMPDBG: upgradeTokens: missing generatedBy annotation, siteConfig.Spec.SkupperNamespace: %v, generatedBy: %+v\n", siteConfig.Spec.SkupperNamespace, generatedBy)
 			}
 			//if ok {
-				//log.Printf("TMPDBG: upgradeTokens: siteConfig.Spec.SkupperNamespace: %v, generatedBy: %+v\n", siteConfig.Spec.SkupperNamespace, generatedBy)
-				// TODO return error if not found
+			//log.Printf("TMPDBG: upgradeTokens: siteConfig.Spec.SkupperNamespace: %v, generatedBy: %+v\n", siteConfig.Spec.SkupperNamespace, generatedBy)
+			// TODO return error if not found
 			//}
 			cost, ok := secret.ObjectMeta.Annotations[types.TokenCost]
 			if ok {
 				//log.Printf("TMPDBG: upgradeTokens: siteConfig.Spec.SkupperNamespace: %v, cost: %+v\n", siteConfig.Spec.SkupperNamespace, cost)
 			}
 			//if siteVersion, ok := secret.ObjectMeta.Annotations[types.SiteVersion]; ok {
-				// TODO migtration should check original v1 site version.  should all sites be specific version?
-				//log.Printf("TMPDBG: upgradeTokens: siteConfig.Spec.SkupperNamespace: %v, siteVersion: %+v\n", siteConfig.Spec.SkupperNamespace, siteVersion)
+			// TODO migtration should check original v1 site version.  should all sites be specific version?
+			//log.Printf("TMPDBG: upgradeTokens: siteConfig.Spec.SkupperNamespace: %v, siteVersion: %+v\n", siteConfig.Spec.SkupperNamespace, siteVersion)
 			//}
 
 			//for _, ownerRef := range secret.ObjectMeta.OwnerReferences {
@@ -71,7 +66,7 @@ func upgradeTokens(cli *client.KubeClient, outputPath string) error {
 			if targetSiteConfig, ok := uidToSiteConfig[generatedBy]; ok {
 				cmd := generateLinkCommand(targetSiteConfig.Spec.SkupperNamespace, cost, generateTlsSecretName(siteConfig.Spec.SkupperNamespace, targetSiteConfig.Spec.SkupperNamespace))
 				targetNamespaceToLinkCmd[targetSiteConfig.Spec.SkupperNamespace] = cmd
-//generateLinkCommand(targetSiteConfig.Spec.SkupperNamespace, cost, generateTlsSecretName(siteConfig.Spec.SkupperNamespace, targetSiteConfig.Spec.SkupperNamespace))
+				//generateLinkCommand(targetSiteConfig.Spec.SkupperNamespace, cost, generateTlsSecretName(siteConfig.Spec.SkupperNamespace, targetSiteConfig.Spec.SkupperNamespace))
 			}
 
 		}
