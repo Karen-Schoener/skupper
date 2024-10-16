@@ -57,8 +57,8 @@ func main() {
 		fmt.Printf("Both --input and --output flags are required\n")
 		os.Exit(1)
 	}
-	//log.Printf("TMPDBG: inputPath=%+v\n", inputPath)
-	//log.Printf("TMPDBG: oututPath=%+v\n", outputPath)
+	//log.Printf("TMPDBG: inputPath=%+v", inputPath)
+	//log.Printf("TMPDBG: oututPath=%+v", outputPath)
 
 	err := validateDirectory(inputPath)
 	if err != nil {
@@ -81,19 +81,19 @@ func main() {
 }
 
 func validateDirectory(directory string) error {
-	//log.Printf("TMPDBG: validateDirectory: directory=%+v\n", directory)
+	//log.Printf("TMPDBG: validateDirectory: directory=%+v", directory)
 	path, err := filepath.Abs(directory)
-	//log.Printf("TMPDBG: validateDirectory: path=%+v\n", path)
+	//log.Printf("TMPDBG: validateDirectory: path=%+v", path)
 	if err != nil {
-		return fmt.Errorf("Failed to resolve file path %s: %s\n", directory, err)
+		return fmt.Errorf("Failed to resolve file path %s: %s", directory, err)
 	}
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("Failed to stat %s: %s\n", directory, err)
+		return fmt.Errorf("Failed to stat %s: %s", directory, err)
 	}
 	if !stat.IsDir() {
-		return fmt.Errorf("%s is not a directory\n", directory)
+		return fmt.Errorf("%s is not a directory", directory)
 	}
 	return nil
 }
