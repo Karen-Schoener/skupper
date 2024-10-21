@@ -7,9 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
+	kubetypes "k8s.io/apimachinery/pkg/types"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 type SkupperSiteUnmarshaled struct {
@@ -18,23 +19,28 @@ type SkupperSiteUnmarshaled struct {
 		Name              string                 `yaml:"name"`
 		Namespace         string                 `yaml:"namespace"`
 		Labels            map[string]interface{} `yaml:"labels"`
-		Uid               string                 `yaml:"uid"`
+		UID               string                 `yaml:"uid"`
 		CreationTimestamp string                 `yaml:"creationTimestamp"`
 	} `yaml:"metadata"`
 }
 
 type SiteInfo struct {
-	uidToSiteConfig map[string]*types.SiteConfig
-	siteNameToUid   map[string]string
+	SiteConfig    *types.SiteConfig
+	NetworkStatus *NetworkStatus
 }
 
-func getSiteInfo(inputPath string) (*SiteInfo, error) {
-	siteInfo := &SiteInfo{
-		uidToSiteConfig: map[string]*types.SiteConfig{},
-		siteNameToUid:   map[string]string{},
-	}
+type SitesInfo struct {
+	UidToSiteInfo map[string]*SiteInfo
+	SiteNameToUid map[string]string
+	SiteNames     []string
+}
 
-	log.Printf("TMPDBG: getSiteInfo: entering")
+func getSitesInfo(inputPath string) (*SitesInfo, error) {
+	sitesInfo := &SitesInfo{
+		UidToSiteInfo: map[string]*SiteInfo{},
+		SiteNameToUid: map[string]string{},
+		SiteNames:     []string{},
+	}
 
 	absInputPath, err := filepath.Abs(inputPath)
 	if err != nil {
@@ -55,27 +61,31 @@ func getSiteInfo(inputPath string) (*SiteInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Invalid debug dump directory: %s: %v", entry.Name(), err)
 		}
-		log.Printf("TMPDBG: getSiteInfo: entry.Name(): %+v", entry.Name())
-
-		networkStatus, err := readNetworkStatus(debugDumpPath)
-		log.Printf("TMPDBG: getSiteInfo: case 90: err: %+v", err)
-		log.Printf("TMPDBG: getSiteInfo: case 91: networkStatus: %+v", networkStatus)
-
-		return nil, nil // TMPDBG
 
 		siteConfig, err := readSiteConfig(debugDumpPath)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to read site config from directory: %s: %v", entry.Name(), err)
 		}
-		log.Printf("TMPDBG: getSiteInfo: siteConfig: %+v", siteConfig)
+
+		networkStatus, err := readNetworkStatus(debugDumpPath)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read network status from directory: %s: %v", entry.Name(), err)
+		}
+
+		sitesInfo.UidToSiteInfo[siteConfig.Reference.UID] = &SiteInfo{
+			SiteConfig:    siteConfig,
+			NetworkStatus: networkStatus,
+		}
+		sitesInfo.SiteNameToUid[siteConfig.Spec.SkupperName] = siteConfig.Reference.UID
+		sitesInfo.SiteNames = append(sitesInfo.SiteNames, siteConfig.Spec.SkupperName)
 	}
 
-	return siteInfo, nil
+	sort.Strings(sitesInfo.SiteNames)
+
+	return sitesInfo, nil
 }
 
 func readSiteConfig(path string) (*types.SiteConfig, error) {
-	log.Printf("TMPDBG: readSiteConfig: path=%+v", path)
-
 	filename := "skupper-site.yaml"
 	configMapsPath := filepath.Join(path, "configmaps")
 	configmapFile := filepath.Join(configMapsPath, filename)
@@ -93,6 +103,7 @@ func readSiteConfig(path string) (*types.SiteConfig, error) {
 	tmpSiteConfig := metav1.ObjectMeta{
 		Name:      skupperSiteUnmarshaled.Metadata.Name,
 		Namespace: skupperSiteUnmarshaled.Metadata.Namespace,
+		UID:       kubetypes.UID(skupperSiteUnmarshaled.Metadata.UID),
 	}
 	tmpTypeMeta := metav1.TypeMeta{}
 	defaultIngress := "loadbalancer"
@@ -102,8 +113,6 @@ func readSiteConfig(path string) (*types.SiteConfig, error) {
 	//
 	//       One downside to this hack is: annotions, labels of the skupper-site configmap are currently ignored.
 	siteConfig, err := site.ReadSiteConfigFrom(&tmpSiteConfig, &tmpTypeMeta, skupperSiteUnmarshaled.Data, defaultIngress)
-
-	log.Printf("TMPDBG: readSiteConfig: returning: siteConfig=%+v", siteConfig)
 
 	return siteConfig, nil
 }

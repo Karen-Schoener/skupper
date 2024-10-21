@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
@@ -78,8 +77,6 @@ type Link struct {
 func readNetworkStatus(path string) (*NetworkStatus, error) {
 	networkStatus := &NetworkStatus{}
 
-	log.Printf("TMPDBG: readNetworkStatus: path=%+v", path)
-
 	filename := "skupper-network-status.yaml"
 	configMapsPath := filepath.Join(path, "configmaps")
 	configmapFile := filepath.Join(configMapsPath, filename)
@@ -88,41 +85,18 @@ func readNetworkStatus(path string) (*NetworkStatus, error) {
 		return nil, fmt.Errorf("Error reading file %s: %v", filename, err)
 	}
 
-	log.Printf("TMPDBG: readNetworkStatus: data=%+v", string(data))
-
 	// Unmarshal YAML into NetworkStatusDataUnmarshaled to extract the JSON string
 	var networkStatusDataUnmarshaled NetworkStatusDataUnmarshaled
 	err = yaml.Unmarshal(data, &networkStatusDataUnmarshaled)
 	if err != nil {
-		log.Printf("Error unmarshalling YAML: %+v", err)
 		return nil, fmt.Errorf("Error unmarshalling file %s data: %v", filename, err)
 	}
-
-	log.Printf("TMPDBG: NetworkStatus JSON: %s", networkStatusDataUnmarshaled.Data.NetworkStatus)
 
 	// Unmarshal the JSON part of the NetworkStatus
 	err = json.Unmarshal([]byte(networkStatusDataUnmarshaled.Data.NetworkStatus), networkStatus)
 	if err != nil {
-		log.Printf("Error unmarshalling NetworkStatus JSON: %+v", err)
 		return nil, fmt.Errorf("Error unmarshalling NetworkStatus JSON: %v", err)
 	}
 
-	log.Printf("TMPDBG: Unmarshalled network status: %+v", networkStatus)
-
-	DumpNetworkStatus(networkStatus)
-
 	return networkStatus, nil
-}
-
-func DumpNetworkStatus(networkStatus *NetworkStatus) {
-	for i, siteStatus := range networkStatus.SiteStatus {
-		log.Printf("TMPDBG: case 50: i=%+v, siteStatus=%+v", i, siteStatus)
-		for j, routerStatus := range siteStatus.RouterStatus {
-			log.Printf("TMPDBG: case 51: i=%+v, j=%+v, routerStatus=%+v", i, j, routerStatus)
-			log.Printf("TMPDBG: case 52: i=%+v, j=%+v, len(routerStatus.Links)=%+v", i, j, len(routerStatus.Links))
-			for k, link := range routerStatus.Links {
-				log.Printf("TMPDBG: case 53: i=%+v, j=%+v, k=%+v, link=%+v", i, j, k, link)
-			}
-		}
-	}
 }

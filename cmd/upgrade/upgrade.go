@@ -3,41 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"github.com/skupperproject/skupper/pkg/version"
 	"os"
 	"path/filepath"
-	//TMPDBG "os/exec"
-	//TMPDBG "path"
-	//TMPDBG "path/filepath"
-
-	//TMPDBG "github.com/skupperproject/skupper/api/types"
-	//TMPDBG internalbundle "github.com/skupperproject/skupper/internal/nonkube/bundle"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/config"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/nonkube/api"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/nonkube/bundle"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/nonkube/common"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/nonkube/compat"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/nonkube/systemd"
-	//TMPDBG "github.com/skupperproject/skupper/pkg/utils"
-	"github.com/skupperproject/skupper/pkg/version"
 )
 
 const (
 	description = `
-TODO fill me in
-
-Bootstraps a nonkube Skupper site base on the provided flags.
+TODO fill in description
 `
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Llongfile) // TMPDBG: for full file path and line numbers
-
 	var inputPath, outputPath string
 
 	// if -version used, report and exit
 	flag.Usage = func() {
-		fmt.Println("Skupper bootstrap")
+		fmt.Println("Skupper upgrade")
 		fmt.Printf("%s\n", description)
 		fmt.Printf("Usage:\n  %s [options...]\n\n", os.Args[0])
 		fmt.Printf("Flags:\n")
@@ -57,8 +39,6 @@ func main() {
 		fmt.Printf("Both --input and --output flags are required\n")
 		os.Exit(1)
 	}
-	//log.Printf("TMPDBG: inputPath=%+v", inputPath)
-	//log.Printf("TMPDBG: oututPath=%+v", outputPath)
 
 	err := validateDirectory(inputPath)
 	if err != nil {
@@ -72,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = upgradeSites(inputPath, outputPath)
+	err = performUpgrade(inputPath, outputPath)
 	if err != nil {
 		fmt.Printf("Error upgrading sites: %v\n", err)
 		os.Exit(1)
@@ -81,9 +61,7 @@ func main() {
 }
 
 func validateDirectory(directory string) error {
-	//log.Printf("TMPDBG: validateDirectory: directory=%+v", directory)
 	path, err := filepath.Abs(directory)
-	//log.Printf("TMPDBG: validateDirectory: path=%+v", path)
 	if err != nil {
 		return fmt.Errorf("Failed to resolve file path %s: %s", directory, err)
 	}
@@ -98,14 +76,20 @@ func validateDirectory(directory string) error {
 	return nil
 }
 
-func upgradeSites(inputPath, outputPath string) error {
-	log.Printf("TMPDBG: upgradeSites: entering")
-	siteInfo, err := getSiteInfo(inputPath)
+func performUpgrade(inputPath, outputPath string) error {
+	// get sites info from debug dump directories
+	sitesInfo, err := getSitesInfo(inputPath)
 	if err != nil {
-		log.Printf("TMPDBG: upgradeSites: after getSiteInfo: err=%+v", err)
-		return err // TODO append error string before returning?
+		return err
 	}
-	log.Printf("TMPDBG: upgradeSites: siteInfo=%+v", siteInfo)
-	log.Printf("TMPDBG: upgradeSites: returning")
+
+	for _, siteName := range sitesInfo.SiteNames {
+		uid := sitesInfo.SiteNameToUid[siteName]
+		siteInfo := sitesInfo.UidToSiteInfo[uid]
+
+		upgradeSite(siteInfo.SiteConfig, outputPath)
+		upgradeTokens(siteInfo, sitesInfo, outputPath)
+	}
+
 	return nil
 }
