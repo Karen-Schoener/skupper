@@ -83,6 +83,7 @@ func performUpgrade(inputPath, outputPath string) error {
 		return err
 	}
 
+	// iterate over site names in alphabetical order
 	for _, siteName := range sitesInfo.SiteNames {
 		uid := sitesInfo.SiteNameToUid[siteName]
 		siteInfo := sitesInfo.UidToSiteInfo[uid]

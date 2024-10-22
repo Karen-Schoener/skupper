@@ -30,6 +30,7 @@ func v1IsLinkAccessDefault(siteConfig *types.SiteConfig) bool {
 }
 
 func createSiteCR(siteConfig *types.SiteConfig) (*v1alpha1.Site, error) {
+	// TODO: assume that service account should be unspecified during upgrade.
 	//DefaultServiceAccountName = "skupper-controller"
 	//options := map[string]string{
 	//site.SiteConfigNameKey: siteConfig.Spec.SkupperName,
@@ -49,6 +50,10 @@ func createSiteCR(siteConfig *types.SiteConfig) (*v1alpha1.Site, error) {
 			//ServiceAccount: DefaultServiceAccountName,
 		},
 	}
+	if siteConfig.Spec.RouterMode == string(types.TransportModeEdge) {
+		resource.Spec.RouterMode = string(types.TransportModeEdge)
+	}
+	// TODO: confirm logic to set LinkAccess
 	if v1IsLinkAccessDefault(siteConfig) {
 		resource.Spec.LinkAccess = "default"
 	}
