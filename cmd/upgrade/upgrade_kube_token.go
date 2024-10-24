@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
 
 	"strings"
 
@@ -12,6 +11,8 @@ import (
 
 	"github.com/skupperproject/skupper/api/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/skupperproject/skupper/internal/cmd/skupper/common/utils"
 )
 
 func upgradeTokens(siteInfo *SiteInfo, sitesInfo *SitesInfo, outputPath string) error {
@@ -85,12 +86,12 @@ func saveAccessTokenCR(resource *v1alpha1.AccessToken, outputPath string, siteNa
 
 	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_access_token.yaml", resource.ObjectMeta.Name))
 
-	data, err := yaml.Marshal(resource)
+	data, err := utils.Encode("yaml", resource)
 	if err != nil {
 		return fmt.Errorf("Failed to marshal site resource to YAML: %w", err.Error())
 	}
 
-	err = os.WriteFile(filepath, data, 0644)
+	err = os.WriteFile(filepath, []byte(data), 0644)
 	if err != nil {
 		return fmt.Errorf("Failed to write site resource to file: %w", err.Error())
 	}
@@ -107,12 +108,12 @@ func saveAccessGrantCR(resource *v1alpha1.AccessGrant, outputPath string, siteNa
 
 	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_access_grant.yaml", resource.ObjectMeta.Name))
 
-	data, err := yaml.Marshal(resource)
+	data, err := utils.Encode("yaml", resource)
 	if err != nil {
 		return fmt.Errorf("Failed to marshal site resource to YAML: %w", err.Error())
 	}
 
-	err = os.WriteFile(filepath, data, 0644)
+	err = os.WriteFile(filepath, []byte(data), 0644)
 	if err != nil {
 		return fmt.Errorf("Failed to write site resource to file: %w", err.Error())
 	}

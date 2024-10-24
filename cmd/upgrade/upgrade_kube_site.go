@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
 
 	"github.com/skupperproject/skupper/api/types"
 
 	"github.com/skupperproject/skupper/pkg/apis/skupper/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/skupperproject/skupper/internal/cmd/skupper/common/utils"
 )
 
 func upgradeSite(siteConfig *types.SiteConfig, outputPath string) error {
@@ -70,12 +71,12 @@ func saveSiteCR(resource *v1alpha1.Site, outputPath string, siteName string) err
 
 	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_site.yaml", siteName))
 
-	data, err := yaml.Marshal(resource)
+	data, err := utils.Encode("yaml", resource)
 	if err != nil {
 		return fmt.Errorf("Failed to marshal site resource to YAML: %w", err.Error())
 	}
 
-	err = os.WriteFile(filepath, data, 0644)
+	err = os.WriteFile(filepath, []byte(data), 0644)
 	if err != nil {
 		return fmt.Errorf("Failed to write site resource to file: %w", err.Error())
 	}
