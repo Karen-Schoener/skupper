@@ -170,7 +170,7 @@ func generateTokenName(sourceNamsepace, targetNamespace string) string {
 
 // borrowed from: ./pkg/nonkube/api/token.go
 type Token struct {
-	Links  []*v2alpha1.Link
+	Links []*v2alpha1.Link
 }
 
 // TODO: when to create multiple links?  how to detect HA?
@@ -190,7 +190,7 @@ func createLinkTokenCR(linkName string, cost int) (*Token, error) {
 				},
 				Spec: v2alpha1.LinkSpec{
 					//TlsCredentials: clientSecret.Name,
-					Cost:           cost,
+					Cost: cost,
 				},
 			},
 		},

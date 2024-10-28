@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/skupperproject/skupper/internal/kube/client"
+
+	"sort"
 )
 
 const (
@@ -58,6 +60,55 @@ func main() {
 
 }
 
+func performUpgrade(outputPath string) error {
+	var namespace string
+	kubeconfig := getKubeConfig()
+
+	cli, err := client.NewClient(namespace, "", kubeconfig)
+	if err != nil {
+		return fmt.Errorf("Error getting van client: %w", err.Error())
+	}
+
+	uidToSiteConfig, err := getUidToSiteConfig(cli)
+	if err != nil {
+		return err
+	}
+
+	siteNameToUid := map[string]string{}
+	siteNames := []string{}
+
+	for _, siteConfig := range uidToSiteConfig {
+		siteNameToUid[siteConfig.Spec.SkupperName] = siteConfig.Reference.UID
+		siteNames = append(siteNames, siteConfig.Spec.SkupperName)
+	}
+
+	sort.Strings(siteNames)
+
+	// iterate over site names in alphabetical order
+	for _, siteName := range siteNames {
+		uid := siteNameToUid[siteName]
+
+		siteConfig := uidToSiteConfig[uid]
+		err := upgradeSite(siteConfig, outputPath)
+		if err != nil {
+			return err
+		}
+
+		err = upgradeTokens(cli, siteConfig, outputPath, uidToSiteConfig)
+		if err != nil {
+			return err
+		}
+
+		err = upgradeSkupperServices(cli, siteConfig, outputPath, uidToSiteConfig)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+}
+
 func validateDirectory(directory string) error {
 	path, err := filepath.Abs(directory)
 	if err != nil {
@@ -71,49 +122,6 @@ func validateDirectory(directory string) error {
 	if !stat.IsDir() {
 		return fmt.Errorf("%s is not a directory", directory)
 	}
-	return nil
-}
-
-func performUpgrade(outputPath string) error {
-	var namespace string
-	kubeconfig := getKubeConfig()
-
-	cli, err := client.NewClient(namespace, "", kubeconfig)
-	if err != nil {
-		return fmt.Errorf("Error getting van client: %w", err.Error())
-	}
-
-	// TODO remove uidToSiteConfig var
-	uidToSiteConfig, err := getUidToSiteConfig(cli)
-	for _, siteConfig := range uidToSiteConfig {
-		createDir(outputPath, siteConfig.Spec.SkupperNamespace)
-	}
-
-	// get sites info from debug dump directories
-	sitesInfo, err := getSitesInfo(cli)
-	if err != nil {
-		return err
-	}
-
-	// iterate over site names in alphabetical order
-	for _, siteName := range sitesInfo.SiteNames {
-		uid := sitesInfo.SiteNameToUid[siteName]
-		// TODO fix me siteInfo := sitesInfo.UidToSiteInfo[uid]
-
-		// TODO remove me upgradeSite(siteInfo.SiteConfig, outputPath)
-		//upgradeTokens(siteInfo, sitesInfo, outputPath)
-		siteConfig := sitesInfo.UidToSiteConfig[uid]
-		err := upgradeSite(siteConfig, outputPath)
-		if err != nil {
-			return err
-		}
-
-		err = upgradeTokens(cli, siteConfig, outputPath, sitesInfo.UidToSiteConfig)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

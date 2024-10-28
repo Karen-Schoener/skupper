@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +13,43 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/skupperproject/skupper/internal/cmd/skupper/common/utils"
+
+	"github.com/skupperproject/skupper/internal/kube/client"
+	"github.com/skupperproject/skupper/pkg/site"
 )
+
+func getUidToSiteConfig(cli *client.KubeClient) (map[string]*types.SiteConfig, error) {
+	uidToSiteConfig := map[string]*types.SiteConfig{}
+
+	kubeClient := cli.GetKubeClient()
+
+	// for every namespace
+	namespaces, err := kubeClient.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Error getting namepaces: %w", err.Error())
+	}
+
+	for _, ns := range namespaces.Items {
+		nsName := ns.Name
+
+		// read site configmap from the namespace
+		cm, err := readConfigMap(context.Background(), nsName, types.SiteConfigMapName, cli)
+		if err != nil {
+			return nil, fmt.Errorf("TMPDBG: error reading configmap in namespace %s: %w", nsName, err.Error())
+		}
+		if cm == nil {
+			continue
+		}
+
+		siteConfig, err := site.ReadSiteConfig(cm, nsName)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading siteConfig: %w", err.Error())
+		}
+		uidToSiteConfig[siteConfig.Reference.UID] = siteConfig
+	}
+
+	return uidToSiteConfig, nil
+}
 
 func upgradeSite(siteConfig *types.SiteConfig, outputPath string) error {
 	resource, err := createSiteCR(siteConfig)
