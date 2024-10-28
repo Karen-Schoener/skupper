@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"log"
 	"path/filepath"
 
 	"github.com/skupperproject/skupper/api/types"
-	"github.com/skupperproject/skupper/internal/cmd/skupper/common/utils"
 	"github.com/skupperproject/skupper/internal/kube/client"
 	"github.com/skupperproject/skupper/pkg/apis/skupper/v2alpha1"
 
@@ -15,11 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"strconv"
-
-	"bufio"
-	"bytes"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func readConnectionTokens(ctx context.Context, namespace string, cli *client.KubeClient) ([]corev1.Secret, error) {
@@ -52,6 +46,10 @@ func upgradeTokens(cli *client.KubeClient, siteConfig *types.SiteConfig, outputP
 				return fmt.Errorf("Error getting token cost for link %s for site %s, %w", secret.ObjectMeta.Name, siteConfig.Spec.SkupperName, err)
 			}
 		}
+		debug := false
+		if debug {
+			log.Printf("TODO: use cost %v for token cost for link %s for site %s", cost, secret.ObjectMeta.Name, siteConfig.Spec.SkupperName)
+		}
 
 		// TODO should upgrade verify the original v1 site version?  should all sites be running a specific version?
 		//if siteVersion, ok := secret.ObjectMeta.Annotations[types.SiteVersion]; ok {
@@ -68,11 +66,16 @@ func upgradeTokens(cli *client.KubeClient, siteConfig *types.SiteConfig, outputP
 			if err != nil {
 				return err
 			}
-			saveAccessGrantCR(accessGrant, outputPath, targetSiteConfig.Spec.SkupperName)
-			saveAccessTokenCR(accessToken, cost, outputPath, siteConfig.Spec.SkupperName)
+			targetOutputDirectory := filepath.Join(outputPath, targetSiteConfig.Spec.SkupperName)
+			outputDirectory := filepath.Join(outputPath, siteConfig.Spec.SkupperName)
 
-			//linkToken, err := createLinkTokenCR(name, cost)
-			//saveLinkTokenCR(linkToken, name, outputPath, siteConfig.Spec.SkupperName)
+			if err = marshal(targetOutputDirectory, "accessgrants", accessGrant.ObjectMeta.Name, accessGrant); err != nil {
+				return err
+			}
+			if err = marshal(outputDirectory, "accesstokens", accessToken.ObjectMeta.Name, accessToken); err != nil {
+				return err
+			}
+
 		}
 	}
 	return nil
@@ -99,51 +102,6 @@ func createAccessGrantCR(sourceSiteConfig, targetSiteConfig *types.SiteConfig, n
 	return resource, nil
 }
 
-// TODO write cost to file in yaml comment?
-func saveAccessTokenCR(resource *v2alpha1.AccessToken, cost int, outputPath string, siteName string) error {
-	targetDir := filepath.Join(outputPath, siteName)
-	err := os.MkdirAll(targetDir, os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		return fmt.Errorf("Failed to create directory: %v", err)
-	}
-
-	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_access_token.yaml", resource.ObjectMeta.Name))
-
-	data, err := utils.Encode("yaml", resource)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal site resource to YAML: %w", err.Error())
-	}
-
-	err = os.WriteFile(filepath, []byte(data), 0644)
-	if err != nil {
-		return fmt.Errorf("Failed to write site resource to file: %w", err.Error())
-	}
-	fmt.Printf("Wrote access token CR to file: %s\n", filepath)
-	return nil
-}
-
-func saveAccessGrantCR(resource *v2alpha1.AccessGrant, outputPath string, siteName string) error {
-	targetDir := filepath.Join(outputPath, siteName)
-	err := os.MkdirAll(targetDir, os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		return fmt.Errorf("Failed to create directory: %v", err)
-	}
-
-	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_access_grant.yaml", resource.ObjectMeta.Name))
-
-	data, err := utils.Encode("yaml", resource)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal site resource to YAML: %w", err.Error())
-	}
-
-	err = os.WriteFile(filepath, []byte(data), 0644)
-	if err != nil {
-		return fmt.Errorf("Failed to write site resource to file: %w", err.Error())
-	}
-	fmt.Printf("Wrote access grant CR to file: %s\n", filepath)
-	return nil
-}
-
 func createAccessTokenCR(sourceSiteConfig, targetSiteConfig *types.SiteConfig, name string) (*v2alpha1.AccessToken, error) {
 	resource := &v2alpha1.AccessToken{
 		TypeMeta: metav1.TypeMeta{
@@ -166,81 +124,4 @@ func createAccessTokenCR(sourceSiteConfig, targetSiteConfig *types.SiteConfig, n
 
 func generateTokenName(sourceNamsepace, targetNamespace string) string {
 	return fmt.Sprintf("%s-to-%s", sourceNamsepace, targetNamespace)
-}
-
-// borrowed from: ./pkg/nonkube/api/token.go
-type Token struct {
-	Links []*v2alpha1.Link
-}
-
-// TODO: when to create multiple links?  how to detect HA?
-func createLinkTokenCR(linkName string, cost int) (*Token, error) {
-	// adjusting name to match the standard used by pkg/site/link.go
-	//clientSecret.Name = fmt.Sprintf("link-%s", linkName)
-
-	resource := &Token{
-		Links: []*v2alpha1.Link{
-			{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "skupper.io/v2alpha1",
-					Kind:       "Link",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: linkName,
-				},
-				Spec: v2alpha1.LinkSpec{
-					//TlsCredentials: clientSecret.Name,
-					Cost: cost,
-				},
-			},
-		},
-	}
-	return resource, nil
-}
-
-// lifted Marshal from file: ./pkg/nonkube/api/token.go
-func (t *Token) Marshal() ([]byte, error) {
-	s := json.NewSerializerWithOptions(json.DefaultMetaFactory, scheme.Scheme, scheme.Scheme, json.SerializerOptions{Yaml: true})
-	buffer := new(bytes.Buffer)
-	writer := bufio.NewWriter(buffer)
-	var err error
-	//_, _ = writer.Write([]byte("---\n"))
-	//err := s.Encode(t.Secret, writer)
-	//if err != nil {
-	//	return nil, err
-	//}
-	for _, l := range t.Links {
-		_, _ = writer.Write([]byte("---\n"))
-		err = s.Encode(l, writer)
-		if err != nil {
-			return nil, err
-		}
-		if err = writer.Flush(); err != nil {
-			return nil, err
-		}
-	}
-	return buffer.Bytes(), nil
-}
-
-func saveLinkTokenCR(resource *Token, name string, outputPath string, siteName string) error {
-	targetDir := filepath.Join(outputPath, siteName)
-	err := os.MkdirAll(targetDir, os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		return fmt.Errorf("Failed to create directory: %v", err)
-	}
-
-	filepath := filepath.Join(targetDir, fmt.Sprintf("%s_link_token.yaml", name))
-
-	// open file in write mode
-	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("Failed to open file %s: %w", filepath, err)
-	}
-	defer file.Close()
-
-	data, err := resource.Marshal()
-	_, err = file.Write(data)
-
-	fmt.Printf("Wrote link token CR to file: %s\n", filepath)
-	return nil
 }
