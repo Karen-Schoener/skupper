@@ -84,26 +84,46 @@ func performUpgrade(outputPath string) error {
 
 	sort.Strings(siteNames)
 
+	nameToV2SiteState := map[string]*SiteState{}
+
+	for _, siteName := range siteNames {
+		nameToV2SiteState[siteName] = NewSiteState()
+	}
+
 	// iterate over site names in alphabetical order
 	for _, siteName := range siteNames {
+		v2SiteState := nameToV2SiteState[siteName]
+
 		uid := siteNameToUid[siteName]
 
 		siteConfig := uidToSiteConfig[uid]
-		err := upgradeSite(siteConfig, outputPath)
+		v2SiteState.Site, err = createSiteCR(siteConfig)
 		if err != nil {
 			return err
 		}
 
-		err = upgradeTokens(cli, siteConfig, outputPath, uidToSiteConfig)
+		err := createTokenCRs(cli, siteConfig, uidToSiteConfig, nameToV2SiteState)
 		if err != nil {
 			return err
 		}
 
-		err = upgradeSkupperServices(cli, siteConfig, outputPath, uidToSiteConfig)
+		err = createServiceCRs(cli, siteConfig, v2SiteState)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	for _, siteName := range siteNames {
+		var siteState *SiteState
+		var exists bool
+		if siteState, exists = nameToV2SiteState[siteName]; !exists {
+			return fmt.Errorf("Error rendering site %s, site not found", siteName)
+		}
+		err := Render(siteState, outputPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

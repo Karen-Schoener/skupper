@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"fmt"
-	"path/filepath"
 
 	"github.com/skupperproject/skupper/api/types"
 
@@ -46,18 +45,6 @@ func getUidToSiteConfig(cli *client.KubeClient) (map[string]*types.SiteConfig, e
 	}
 
 	return uidToSiteConfig, nil
-}
-
-func upgradeSite(siteConfig *types.SiteConfig, outputPath string) error {
-	resource, err := createSiteCR(siteConfig)
-	if err != nil {
-		return fmt.Errorf("Error creating site CR: %w", err.Error())
-	}
-	outputDirectory := filepath.Join(outputPath, resource.ObjectMeta.Name)
-	if err = marshal(outputDirectory, "site", resource.ObjectMeta.Name, resource); err != nil {
-		return err
-	}
-	return nil
 }
 
 func v1IsLinkAccessDefault(siteConfig *types.SiteConfig) bool {

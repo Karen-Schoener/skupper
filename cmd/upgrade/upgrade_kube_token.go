@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/internal/kube/client"
@@ -26,7 +25,10 @@ func readConnectionTokens(ctx context.Context, namespace string, cli *client.Kub
 	return secrets.Items, nil
 }
 
-func upgradeTokens(cli *client.KubeClient, siteConfig *types.SiteConfig, outputPath string, uidToSiteConfig map[string]*types.SiteConfig) error {
+// Read connection tokens for the v1 siteConfig.
+// Save resulting v2 AccessGrants, AccessTokens in nameToV2SiteState.
+func createTokenCRs(cli *client.KubeClient, siteConfig *types.SiteConfig, uidToSiteConfig map[string]*types.SiteConfig, nameToV2SiteState map[string]*SiteState) error {
+
 	secrets, err := readConnectionTokens(context.Background(), siteConfig.Spec.SkupperNamespace, cli)
 	if err != nil {
 		return fmt.Errorf("Error getting connection tokens for siteConfig.Spec.SkupperNamespace %v: %w", siteConfig.Spec.SkupperNamespace, err.Error())
@@ -66,16 +68,8 @@ func upgradeTokens(cli *client.KubeClient, siteConfig *types.SiteConfig, outputP
 			if err != nil {
 				return err
 			}
-			targetOutputDirectory := filepath.Join(outputPath, targetSiteConfig.Spec.SkupperName)
-			outputDirectory := filepath.Join(outputPath, siteConfig.Spec.SkupperName)
-
-			if err = marshal(targetOutputDirectory, "accessgrants", accessGrant.ObjectMeta.Name, accessGrant); err != nil {
-				return err
-			}
-			if err = marshal(outputDirectory, "accesstokens", accessToken.ObjectMeta.Name, accessToken); err != nil {
-				return err
-			}
-
+			nameToV2SiteState[targetSiteConfig.Spec.SkupperName].Grants[accessGrant.Name] = accessGrant
+			nameToV2SiteState[siteConfig.Spec.SkupperName].Tokens[accessGrant.Name] = accessToken
 		}
 	}
 	return nil

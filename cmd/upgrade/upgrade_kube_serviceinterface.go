@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/internal/kube/client"
@@ -33,28 +32,21 @@ func readSkupperServices(cli *client.KubeClient, namespace string) ([]*types.Ser
 	return services, nil
 }
 
-func upgradeSkupperServices(cli *client.KubeClient, siteConfig *types.SiteConfig, outputPath string, uidToSiteConfig map[string]*types.SiteConfig) error {
+
+func createServiceCRs(cli *client.KubeClient, siteConfig *types.SiteConfig, v2SiteState *SiteState) error {
 	services, err := readSkupperServices(cli, siteConfig.Spec.SkupperNamespace)
 	if err != nil {
 		return err
 	}
 
-	outputDirectory := filepath.Join(outputPath, siteConfig.Spec.SkupperName)
-
 	for _, service := range services {
-		listeners, err := createListenerCRs(siteConfig, service)
+		v2SiteState.Listeners, err = createListenerCRs(siteConfig, service)
 		if err != nil {
 			return err
 		}
-		if err = marshalMap(outputDirectory, "listeners", listeners); err != nil {
-			return err
-		}
 		if len(service.Targets) > 0 {
-			connectors, err := createConnectorCRs(siteConfig, service)
+			v2SiteState.Connectors, err = createConnectorCRs(siteConfig, service)
 			if err != nil {
-				return err
-			}
-			if err = marshalMap(outputDirectory, "connectors", connectors); err != nil {
 				return err
 			}
 		}
