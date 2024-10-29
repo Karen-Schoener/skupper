@@ -64,11 +64,11 @@ func createListenerCRs(siteConfig *types.SiteConfig, service *types.ServiceInter
 				Kind:       "Listener",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      service.Address, // Is this right?
-				Namespace: siteConfig.Spec.SkupperNamespace,
+				Name: service.Address, // Is this right?
+				//Namespace: siteConfig.Spec.SkupperNamespace,
 			},
 			Spec: v2alpha1.ListenerSpec{
-				//Host:           cmd.host,
+				Host:       service.Address, // TODO is this correct?
 				Port:       port,
 				RoutingKey: service.Address,
 				//TlsCredentials: cmd.tlsSecret,
