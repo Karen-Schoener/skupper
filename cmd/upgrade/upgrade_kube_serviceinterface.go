@@ -32,7 +32,6 @@ func readSkupperServices(cli *client.KubeClient, namespace string) ([]*types.Ser
 	return services, nil
 }
 
-
 func createServiceCRs(cli *client.KubeClient, siteConfig *types.SiteConfig, v2SiteState *SiteState) error {
 	services, err := readSkupperServices(cli, siteConfig.Spec.SkupperNamespace)
 	if err != nil {

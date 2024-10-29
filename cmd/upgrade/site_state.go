@@ -51,22 +51,20 @@ func NewSiteState() *SiteState {
 
 func Render(siteState *SiteState, outputPath string) error {
 	outputDirectory := filepath.Join(outputPath, siteState.Site.ObjectMeta.Name)
+
 	if err := marshal(outputDirectory, "site", siteState.Site.ObjectMeta.Name, siteState.Site); err != nil {
 		return err
 	}
-
-	siteOutputDirectory := filepath.Join(outputDirectory, siteState.Site.ObjectMeta.Name)
-
-	if err := marshalMap(siteOutputDirectory, "accessgrants", siteState.Grants); err != nil {
+	if err := marshalMap(outputDirectory, "accessgrants", siteState.Grants); err != nil {
 		return err
 	}
-	if err := marshalMap(siteOutputDirectory, "accesstokens", siteState.Tokens); err != nil {
+	if err := marshalMap(outputDirectory, "accesstokens", siteState.Tokens); err != nil {
 		return err
 	}
-	if err := marshalMap(siteOutputDirectory, "listeners", siteState.Listeners); err != nil {
+	if err := marshalMap(outputDirectory, "listeners", siteState.Listeners); err != nil {
 		return err
 	}
-	if err := marshalMap(siteOutputDirectory, "connectors", siteState.Connectors); err != nil {
+	if err := marshalMap(outputDirectory, "connectors", siteState.Connectors); err != nil {
 		return err
 	}
 
@@ -95,7 +93,6 @@ func marshal(outputDirectory, resourceType, resourceName string, resource interf
 	return nil
 }
 
-// Note: Routine marshalMap was lifted from pkg/nonkube/api/site_state.go.
 func marshalMap[V any](outputDirectory, resourceType string, resourceMap map[string]V) error {
 	var err error
 	for resourceName, resource := range resourceMap {
