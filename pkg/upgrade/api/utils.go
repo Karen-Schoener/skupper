@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -11,12 +11,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-func getKubeConfig() string {
+func GetKubeConfig() string {
 	var kubeconfig string // TODO
 	return kubeconfig
 }
 
-func readConfigMap(ctx context.Context, namespace string, name string, cli *client.KubeClient) (*corev1.ConfigMap, error) {
+func ReadConfigMap(ctx context.Context, namespace string, name string, cli *client.KubeClient) (*corev1.ConfigMap, error) {
 	kubeClient := cli.GetKubeClient()
 	cm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {

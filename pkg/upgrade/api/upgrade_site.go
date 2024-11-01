@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func getUidToSiteConfig(cli *client.KubeClient) (map[string]*types.SiteConfig, e
 		nsName := ns.Name
 
 		// read site configmap from the namespace
-		cm, err := readConfigMap(context.Background(), nsName, types.SiteConfigMapName, cli)
+		cm, err := ReadConfigMap(context.Background(), nsName, types.SiteConfigMapName, cli)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configmap in namespace %s: %w", nsName, err.Error())
 		}

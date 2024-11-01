@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 func readSkupperServices(cli *client.KubeClient, namespace string) ([]*types.ServiceInterface, error) {
-	cm, err := readConfigMap(context.Background(), namespace, types.ServiceInterfaceConfigMap, cli)
+	cm, err := ReadConfigMap(context.Background(), namespace, types.ServiceInterfaceConfigMap, cli)
 	if err != nil {
 		return nil, err
 	}

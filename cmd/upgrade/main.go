@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/skupperproject/skupper/internal/kube/client"
+	"github.com/skupperproject/skupper/pkg/upgrade/api"
 
 	"sort"
 )
@@ -61,66 +61,24 @@ func main() {
 }
 
 func performUpgrade(outputPath string) error {
-	var namespace string
-	kubeconfig := getKubeConfig()
-
-	cli, err := client.NewClient(namespace, "", kubeconfig)
-	if err != nil {
-		return fmt.Errorf("Error getting van client: %w", err.Error())
-	}
-
-	uidToSiteConfig, err := getUidToSiteConfig(cli)
+	nameToV2SiteState, err := api.PerformUpgrade(outputPath)
 	if err != nil {
 		return err
 	}
 
-	siteNameToUid := map[string]string{}
 	siteNames := []string{}
-
-	for _, siteConfig := range uidToSiteConfig {
-		siteNameToUid[siteConfig.Spec.SkupperName] = siteConfig.Reference.UID
-		siteNames = append(siteNames, siteConfig.Spec.SkupperName)
+	for siteName, _ := range nameToV2SiteState {
+		siteNames = append(siteNames, siteName)
 	}
-
 	sort.Strings(siteNames)
 
-	nameToV2SiteState := map[string]*SiteState{}
-
 	for _, siteName := range siteNames {
-		nameToV2SiteState[siteName] = NewSiteState()
-	}
-
-	// iterate over site names in alphabetical order
-	for _, siteName := range siteNames {
-		v2SiteState := nameToV2SiteState[siteName]
-
-		uid := siteNameToUid[siteName]
-
-		siteConfig := uidToSiteConfig[uid]
-		v2SiteState.Site, err = createSiteCR(siteConfig)
-		if err != nil {
-			return err
-		}
-
-		err := createTokenCRs(cli, siteConfig, uidToSiteConfig, nameToV2SiteState)
-		if err != nil {
-			return err
-		}
-
-		err = createServiceCRs(cli, siteConfig, v2SiteState)
-		if err != nil {
-			return err
-		}
-
-	}
-
-	for _, siteName := range siteNames {
-		var siteState *SiteState
+		var siteState *api.SiteState
 		var exists bool
 		if siteState, exists = nameToV2SiteState[siteName]; !exists {
 			return fmt.Errorf("Error rendering site %s, site not found", siteName)
 		}
-		err := Render(siteState, outputPath)
+		err := api.Render(siteState, outputPath)
 		if err != nil {
 			return err
 		}
