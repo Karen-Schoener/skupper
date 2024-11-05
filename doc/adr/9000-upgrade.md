@@ -20,31 +20,127 @@ High level decisions to document further:
 1. The skupper community will define the recommended procedure
    to upgrade v1 skupper sites to v2 skupper sites.
 
-2. skupper v1 and skupper v2 cannot be installed in the same
-   namespace at the same time.
-
-   Reasons include:
-     * TODO: verify: configmapp name collision?
-     * TODO: verify: skupper service collision?
-     * TODO: verify: secret name collision?
-
-3. A tool will be created to create skupper v2 CRs for given
+2. A tool will be created to create skupper v2 CRs for given
    skupper v1 sites. 
 
    Details include:
-     *  
+     * In order to read the skupper v1 configuration, the tool
+       will be provided online access to the skupper v1 cluster.
 
-4. 
+3. skupper v1 and skupper v2 cannot be installed in the same
+   namespace at the same time.
 
-5. 
+   Reasons include:
+     * TODO: verify: configmap name collision?
+     * TODO: verify: service name collision?
+     * TODO: verify: secret name collision?
 
+4. v2 link creation
+
+   To create links, the user will:
+     * create AccessGrant CRs in the target v2 site
+     * wait for the v2 Controller to populate the
+       AccessGrant CR with: CA, code, URL   
+     * edit an AccessToken CR with: CA, code, URL
+     * create AccessToken CRs in the originating v2 site
+
+   Discuss: 
+     * Are links transferable?
+     * Is there a low friction way to create v2 links for the user?
+
+5. Upgrade steps: delete v1 site, create v2 site in same namespace.
+
+### Upgrade steps: delete v1 site, create v2 site in same namespace
+
+Upgrade steps include:
+
+  1. Provide online access to all v1 sites to tool.
+
+     * Tool reads configmap skupper-site for all sites.
+
+       Tool keeps a map of site uid and site config.
+
+     * Tool identifies configured links by: reading secret
+       metadata type=connection-token.
+
+     * Tool identifies service configuration by: reading configmap
+       skupper-servivces.
+
+  2. Tool generates CRs.
+
+     CRs may be stored as yaml files.
+
+     If upgrade tool is called programatically, CRs may be returned
+     programatically as yaml strings.
+
+     * Site CR
+
+       For every v1 skupper-site configmap
+
+     * AccessGrant CR
+
+       For every v1 secret type=connection-token.
+
+       Use generated-by annotation to identify target site.
+
+       TODO: discuss: 1 access grant per v1 link?
+
+     * AccessToken CR
+
+       For every v1 secret type=connection-token.
+
+       Note: credential fields are populated at a later step.
+
+     * Listener CR
+
+       For every skupper-serices configmap entry.
+
+       Create a Listener CR for each service port.
+
+     * Connector CR
+
+       For every skupper-serices configmap entry with targets populated.
+
+       Create a Connector CR for each target entry and for each target port.
+
+  3. User deletes v1 skupper sites.
+
+  4. User starts v2 skupper controller.
+
+     * User may start 1 controller per cluster.
+     * User may start 1 controller per namespace.
+
+  5. User applies v2 yaml files:
+
+     * Site CR
+     * Access Grant CRs
+     * Listener CRs
+     * Connector CRs
+
+  6. User waits for v2 Controller to populate AccessGrant CRs with
+     credential info: CA, code, URL.
+
+  7. User edits v2 AccessToken CRs to include AccessGrant credential
+     info: CA, code, URL.
+  
 ## Open upgrade questions
 
-1. aaa 
+1. How will tool read v1 skupper state: online (kube access) vs 
+   offline (debug dump).
 
-2. bbb
+2. Identify upgrade options:
 
-3. ccc
+   * delete v1 site, create v2 site in same namespace.
+
+   * create v2 site in same namespace.
+
+     v1 and v2 run in the same namespace for some time period.
+
+   * create v2 site in separate namespace.  
+
+     v1 and v2 sites both run in cluster for some time period.
+
+3. 
 
 ## Fixed vs immutable resources during upgrade
 
