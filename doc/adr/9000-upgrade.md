@@ -105,22 +105,26 @@ Upgrade steps include:
 
   3. User deletes v1 skupper sites.
 
-  4. User starts v2 skupper controller.
+  4. User installs v2 CRDs in cluster.
+     This step requires cluster permissions.
+
+  5. User creates v2 skupper controller deployment.
+     User starts v2 skupper controller.
 
      * User may start 1 controller per cluster.
      * User may start 1 controller per namespace.
 
-  5. User applies v2 yaml files:
+  6. User applies v2 yaml files:
 
      * Site CR
      * Access Grant CRs
      * Listener CRs
      * Connector CRs
 
-  6. User waits for v2 Controller to populate AccessGrant CRs with
+  7. User waits for v2 Controller to populate AccessGrant CRs with
      credential info: CA, code, URL.
 
-  7. User edits v2 AccessToken CRs to include AccessGrant credential
+  8. User edits v2 AccessToken CRs to include AccessGrant credential
      info: CA, code, URL.
   
 ## Open upgrade questions
