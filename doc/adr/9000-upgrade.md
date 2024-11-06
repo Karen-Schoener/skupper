@@ -212,12 +212,12 @@ Upgrade steps include:
 
 12. Should the upgrade process restore annotated services?
 
-   If you had an annoated service in v1, at some point this service 
-   should be unnannotated in order to work as expected in v2.
+    If you had an annoated service in v1, at some point this service 
+    should be unnannotated in order to work as expected in v2.
+ 
+    Will service be unnannotated by deleting the v1 site?
 
-   Will service be unnannotated by deleting the v1 site?
-
-   Or will service be unnannotated by some other step?
+    Or will service be unnannotated by some other step?
 
 
 ## Fixed vs immutable resources during upgrade
