@@ -5,7 +5,6 @@ import (
 
 	skupperv2alpha1 "github.com/skupperproject/skupper/pkg/apis/skupper/v2alpha1"
 	"github.com/skupperproject/skupper/pkg/qdr"
-
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -121,7 +120,7 @@ func TestBindingAdaptor_ConnectorUpdated(t *testing.T) {
 					"backend": &TargetSelectionImpl{
 						selector: "app=backend",
 						watcher: &PodWatcher{
-							// create channel so thta it can be closed without panic.
+							// create channel so that it can be closed without panic.
 							stopCh: make(chan struct{}),
 						},
 					},
@@ -151,6 +150,59 @@ func TestBindingAdaptor_ConnectorUpdated(t *testing.T) {
 			if got := a.ConnectorUpdated(tt.args.connector); got != tt.want {
 				t.Errorf("BindingAdaptor.ConnectorUpdated() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestBindingAdaptor_ConnectorDeleted(t *testing.T) {
+	type fields struct {
+		context   BindingContext
+		mapping   *qdr.PortMapping
+		exposed   ExposedPorts
+		selectors map[string]TargetSelection
+	}
+	type args struct {
+		connector *skupperv2alpha1.Connector
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "connector deleted",
+			fields: fields{
+				context: NewMockBindingContext(map[string]TargetSelection{}),
+				selectors: map[string]TargetSelection{
+					"backend": &TargetSelectionImpl{
+						selector: "app=backend",
+						watcher: &PodWatcher{
+							// create channel so that it can be closed without panic.
+							stopCh: make(chan struct{}),
+						},
+					},
+				},
+			},
+			args: args{
+				connector: &skupperv2alpha1.Connector{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "backend",
+						Namespace: "test",
+						UID:       "8a96ffdf-403b-4e4a-83a8-97d3d459adb6",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &BindingAdaptor{
+				context:   tt.fields.context,
+				mapping:   tt.fields.mapping,
+				exposed:   tt.fields.exposed,
+				selectors: tt.fields.selectors,
+			}
+			a.ConnectorDeleted(tt.args.connector)
 		})
 	}
 }
