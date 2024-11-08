@@ -6,6 +6,8 @@ import (
 	skupperv2alpha1 "github.com/skupperproject/skupper/pkg/apis/skupper/v2alpha1"
 	"github.com/skupperproject/skupper/pkg/qdr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"gotest.tools/assert"
 )
 
 type MockBindingContext struct {
@@ -164,10 +166,14 @@ func TestBindingAdaptor_ConnectorDeleted(t *testing.T) {
 	type args struct {
 		connector *skupperv2alpha1.Connector
 	}
+	type expected struct {
+		selectors map[string]TargetSelection
+	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name     string
+		fields   fields
+		args     args
+		expected expected
 	}{
 		{
 			name: "connector deleted",
@@ -192,6 +198,11 @@ func TestBindingAdaptor_ConnectorDeleted(t *testing.T) {
 					},
 				},
 			},
+			expected: expected{
+				// expected behavior: ConnectorDeleted deletes
+				// "backend" from selectors map
+				selectors: map[string]TargetSelection{},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -203,6 +214,8 @@ func TestBindingAdaptor_ConnectorDeleted(t *testing.T) {
 				selectors: tt.fields.selectors,
 			}
 			a.ConnectorDeleted(tt.args.connector)
+
+			assert.DeepEqual(t, a.selectors, tt.expected.selectors)
 		})
 	}
 }
