@@ -5,9 +5,8 @@ import (
 
 	skupperv2alpha1 "github.com/skupperproject/skupper/pkg/apis/skupper/v2alpha1"
 	"github.com/skupperproject/skupper/pkg/qdr"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"gotest.tools/assert"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type MockBindingContext struct {
@@ -393,6 +392,98 @@ func TestBindingAdaptor_updateBridgeConfigForConnector(t *testing.T) {
 			a.updateBridgeConfigForConnector(tt.args.siteId, tt.args.connector, &tt.args.config)
 
 			assert.DeepEqual(t, tt.args.config, tt.expected.config)
+		})
+	}
+}
+
+func TestBindingAdaptor_ListenerUpdated(t *testing.T) {
+	type fields struct {
+		context   BindingContext
+		mapping   *qdr.PortMapping
+		exposed   ExposedPorts
+		selectors map[string]TargetSelection
+	}
+	type args struct {
+		listener *skupperv2alpha1.Listener
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &BindingAdaptor{
+				context:   tt.fields.context,
+				mapping:   tt.fields.mapping,
+				exposed:   tt.fields.exposed,
+				selectors: tt.fields.selectors,
+			}
+			a.ListenerUpdated(tt.args.listener)
+		})
+	}
+}
+
+func TestBindingAdaptor_ListenerDeleted(t *testing.T) {
+	type fields struct {
+		context   BindingContext
+		mapping   *qdr.PortMapping
+		exposed   ExposedPorts
+		selectors map[string]TargetSelection
+	}
+	type args struct {
+		listener *skupperv2alpha1.Listener
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &BindingAdaptor{
+				context:   tt.fields.context,
+				mapping:   tt.fields.mapping,
+				exposed:   tt.fields.exposed,
+				selectors: tt.fields.selectors,
+			}
+			a.ListenerDeleted(tt.args.listener)
+		})
+	}
+}
+
+func TestBindingAdaptor_updateBridgeConfigForListener(t *testing.T) {
+	type fields struct {
+		context   BindingContext
+		mapping   *qdr.PortMapping
+		exposed   ExposedPorts
+		selectors map[string]TargetSelection
+	}
+	type args struct {
+		siteId   string
+		listener *skupperv2alpha1.Listener
+		config   *qdr.BridgeConfig
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &BindingAdaptor{
+				context:   tt.fields.context,
+				mapping:   tt.fields.mapping,
+				exposed:   tt.fields.exposed,
+				selectors: tt.fields.selectors,
+			}
+			a.updateBridgeConfigForListener(tt.args.siteId, tt.args.listener, tt.args.config)
 		})
 	}
 }
