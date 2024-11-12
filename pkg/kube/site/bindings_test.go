@@ -11,11 +11,13 @@ import (
 
 type MockBindingContext struct {
 	selectors map[string]TargetSelection
+	exposed   ExposedPorts
 }
 
 func NewMockBindingContext(selectors map[string]TargetSelection) *MockBindingContext {
 	return &MockBindingContext{
 		selectors: selectors,
+		exposed:   map[string]*ExposedPortSet{},
 	}
 }
 
@@ -27,6 +29,8 @@ func (m *MockBindingContext) Select(connector *skupperv2alpha1.Connector) Target
 }
 
 func (m *MockBindingContext) Expose(ports *ExposedPortSet) {
+	portsCopy := *ports
+	m.exposed[ports.Host] = &portsCopy
 }
 
 func (m *MockBindingContext) Unexpose(host string) {
@@ -406,13 +410,56 @@ func TestBindingAdaptor_ListenerUpdated(t *testing.T) {
 	type args struct {
 		listener *skupperv2alpha1.Listener
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
+	type expected struct {
+		exposed ExposedPorts
 	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		expected expected
+	}{
+		{
+			name: "Successfully expose listener",
+			fields: fields{
+				context: NewMockBindingContext(nil),
+				// TMPDBG mapping: &qdr.PortMapping{},
+				mapping:   qdr.RecoverPortMapping(&qdr.RouterConfig{}),
+				exposed:   ExposedPorts{},
+				selectors: map[string]TargetSelection{},
+			},
+			args: args{
+				listener: &skupperv2alpha1.Listener{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "backend",
+						Namespace: "test",
+						UID:       "8a96ffdf-403b-4e4a-83a8-97d3d459adb6",
+					},
+					Spec: skupperv2alpha1.ListenerSpec{
+						Host:       "backend",
+						Port:       8080,
+						RoutingKey: "backend",
+					},
+				},
+			},
+			expected: expected{
+				exposed: map[string]*ExposedPortSet{
+					"backend": &ExposedPortSet{
+						Host: "backend",
+						Ports: map[string]Port{
+							"backend": Port{
+								Name:       "backend",
+								Port:       8080,
+								TargetPort: 1024,
+								Protocol:   "TCP",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &BindingAdaptor{
@@ -422,6 +469,8 @@ func TestBindingAdaptor_ListenerUpdated(t *testing.T) {
 				selectors: tt.fields.selectors,
 			}
 			a.ListenerUpdated(tt.args.listener)
+
+			assert.DeepEqual(t, a.exposed, tt.expected.exposed)
 		})
 	}
 }
