@@ -490,8 +490,31 @@ func TestBindingAdaptor_ListenerDeleted(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Successfully delete listener",
+			fields: fields{
+				context:   NewMockBindingContext(nil),
+				mapping:   qdr.RecoverPortMapping(&qdr.RouterConfig{}),
+				exposed:   ExposedPorts{},
+				selectors: map[string]TargetSelection{},
+			},
+			args: args{
+				listener: &skupperv2alpha1.Listener{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "backend",
+						Namespace: "test",
+						UID:       "8a96ffdf-403b-4e4a-83a8-97d3d459adb6",
+					},
+					Spec: skupperv2alpha1.ListenerSpec{
+						Host:       "backend",
+						Port:       8080,
+						RoutingKey: "backend",
+					},
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &BindingAdaptor{
