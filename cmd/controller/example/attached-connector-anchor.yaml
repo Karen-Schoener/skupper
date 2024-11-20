@@ -1,0 +1,8 @@
+apiVersion: skupper.io/v2alpha1
+kind: AttachedConnectorAnchor
+metadata:
+  name: backend
+  namespace: east
+spec:
+  routingKey: backend
+  connectorNamespace: east-anchor
