@@ -20,6 +20,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
         //"github.com/skupperproject/skupper/internal/kube/client"
 
+
+        "context"
+        "github.com/skupperproject/skupper/api/types"
+        //"github.com/skupperproject/skupper/internal/kube/client"
+        "k8s.io/apimachinery/pkg/api/errors"
+        "k8s.io/client-go/kubernetes"
+
 )
 
 func getTestSiteCr() *skupperv2alpha1.Site {
@@ -225,8 +232,28 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 			if err := b.attachedConnectorUpdated(tt.args.name, tt.args.definition); (err != nil) != tt.wantErr {
 				t.Errorf("ExtendedBindings.attachedConnectorUpdated() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			namespace := "test" 
+                	cm, err := readConfigMap(context.Background(), namespace, types.TransportConfigMapName, tt.fields.site.controller.GetKubeClient())
+			log.Printf("TMPDBG: after readConfigMap: err=%+v", err)
+			log.Printf("TMPDBG: after readConfigMap: cm=%+v", cm)
+
+
 		})
 	}
+}
+
+func readConfigMap(ctx context.Context, namespace string, name string, kubeClient kubernetes.Interface) (*corev1.ConfigMap, error) {
+//func readConfigMap(ctx context.Context, namespace string, name string, client *client.KubeClient) (*corev1.ConfigMap, error) {
+//func readConfigMap(ctx context.Context, namespace string, name string, kubeClient kubernetes.Interface) (*corev1.ConfigMap, error) {
+        //kubeClient := client.GetKubeClient()
+        cm, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(ctx, name, v1.GetOptions{})
+        if errors.IsNotFound(err) {
+                return nil, nil
+        } else if err != nil {
+                return nil, err
+        }
+        return cm, err
 }
 
 func updateParent(b *ExtendedBindings) {
