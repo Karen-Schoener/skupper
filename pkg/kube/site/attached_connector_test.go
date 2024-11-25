@@ -22,7 +22,7 @@ import (
 
 	"context"
 	"github.com/skupperproject/skupper/api/types"
-	//"github.com/skupperproject/skupper/internal/kube/client"
+	"github.com/skupperproject/skupper/internal/kube/client"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 )
@@ -103,6 +103,14 @@ func newSiteMocksCopy(name string, namespace string, k8sObjects []runtime.Object
 	return newSite, nil
 }
 
+func NewFakeClient(namespace string, k8sObjects []runtime.Object, skupperObjects []runtime.Object) (*client.KubeClient, error) {
+	fakeclient, err := fakeclient.NewFakeClient(namespace, k8sObjects, skupperObjects, "")
+	if err != nil {
+		return nil, err
+	}
+	return fakeclient, nil
+}
+
 func NewMockSite(name string, namespace string, k8sObjects []runtime.Object, skupperObjects []runtime.Object) *Site {
 	site, err := newSiteMocksCopy(name, namespace, k8sObjects, skupperObjects)
 
@@ -115,12 +123,12 @@ func NewMockSite(name string, namespace string, k8sObjects []runtime.Object, sku
 }
 
 func NewMockController(namespace string, k8sObjects []runtime.Object, skupperObjects []runtime.Object) (*kube.Controller, error) {
-	client, err := fakeclient.NewFakeClient(namespace, k8sObjects, skupperObjects, "")
+	fakeclient, err := NewFakeClient(namespace, k8sObjects, skupperObjects)
 	if err != nil {
 		return nil, err
 	}
 
-	controller := kube.NewController(namespace, client)
+	controller := kube.NewController(namespace, fakeclient)
 
 	return controller, nil
 }
@@ -141,12 +149,12 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 		return controller
 	}
 	type fields struct {
+		name           string
+		namespace      string
 		k8sObjects     []runtime.Object
 		skupperObjects []runtime.Object
 		bindings       *site.Bindings
 		connectors     map[string]*AttachedConnector
-		controller     *kube.Controller
-		site           *Site
 		logger         *slog.Logger
 	}
 	type testInitSteps struct {
@@ -171,6 +179,8 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 				recoverSite: true,
 			},
 			fields: fields{
+				name:       "test",
+				namespace:  "test",
 				k8sObjects: []runtime.Object{},
 				skupperObjects: []runtime.Object{
 					initAttachedConnectorCr(),
@@ -187,20 +197,6 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 						},
 					},
 				},
-				controller: initController("test",
-					[]runtime.Object{},
-					[]runtime.Object{
-						initAttachedConnectorCr(),
-						initAttachedConnectorAnchorCr(),
-					},
-				),
-				site: NewMockSite("test", "test",
-					[]runtime.Object{},
-					[]runtime.Object{
-						initAttachedConnectorCr(),
-						initAttachedConnectorAnchorCr(),
-					},
-				),
 				logger: slog.New(slog.Default().Handler()).With(
 					slog.String("component", "kube.site.attached_connector"),
 				),
@@ -214,12 +210,24 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		log.Printf("TMPDBG: binding_test: tt.name=%+v", tt.name)
+
+		controller := initController(
+			tt.fields.namespace,
+			tt.fields.k8sObjects,
+			tt.fields.skupperObjects)
+		// TODO replace NewMockSite with initMockSite() that asserts on err
+		site := NewMockSite(
+			tt.fields.name,
+			tt.fields.namespace,
+			tt.fields.k8sObjects,
+			tt.fields.skupperObjects)
+
 		t.Run(tt.name, func(t *testing.T) {
 			b := &ExtendedBindings{
 				bindings:   tt.fields.bindings,
 				connectors: tt.fields.connectors,
-				controller: tt.fields.controller,
-				site:       tt.fields.site,
+				controller: controller,
+				site:       site,
 				logger:     tt.fields.logger,
 			}
 			updateParent(b) // TMPDBG TODO BETTER NAME
@@ -235,7 +243,7 @@ func TestExtendedBindings_attachedConnectorUpdated(t *testing.T) {
 			}
 
 			namespace := "test"
-			cm, err := readConfigMap(context.Background(), namespace, types.TransportConfigMapName, tt.fields.site.controller.GetKubeClient())
+			cm, err := readConfigMap(context.Background(), namespace, types.TransportConfigMapName, site.controller.GetKubeClient())
 			log.Printf("TMPDBG: after readConfigMap: err=%+v", err)
 			log.Printf("TMPDBG: after readConfigMap: cm=%+v", cm)
 
