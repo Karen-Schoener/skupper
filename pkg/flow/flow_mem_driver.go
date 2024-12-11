@@ -422,14 +422,14 @@ func (fc *FlowCollector) linkFlowPair(flow *FlowRecord) (*FlowPairRecord, bool) 
 	fwdLabels["sourceProcess"] = *sourceFlow.ProcessName
 	fwdLabels["destProcess"] = *destFlow.ProcessName
 	fwdLabels["sourceHost"] = *sourceFlow.SourceHost
-	fwdLabels["destHost"] = *destFlow.SourceHost
+	//fwdLabels["destHost"] = *destFlow.SourceHost
 	delete(fwdLabels, "process")
 	revLabels["sourceSite"] = destSiteName + "@_@" + destSiteId
 	revLabels["destSite"] = sourceSiteName + "@_@" + sourceSiteId
 	revLabels["sourceProcess"] = *destFlow.ProcessName
 	revLabels["destProcess"] = *sourceFlow.ProcessName
 	revLabels["sourceHost"] = *destFlow.SourceHost
-	fwdLabels["destHost"] = *sourceFlow.SourceHost
+	//fwdLabels["destHost"] = *sourceFlow.SourceHost
 	delete(revLabels, "process")
 
 	fp := &FlowPairRecord{
@@ -2299,9 +2299,9 @@ func (fc *FlowCollector) setupFlowMetrics(va *VanAddressRecord, flow *FlowRecord
 	if key.sourceHost, ok = metricLabel["sourceHost"]; !ok {
 		return fmt.Errorf("Metric label missing source host key")
 	}
-	if key.sourceHost, ok = metricLabel["destHost"]; !ok {
-		return fmt.Errorf("Metric label missing dest host key")
-	}
+	//if key.sourceHost, ok = metricLabel["destHost"]; !ok {
+	//	return fmt.Errorf("Metric label missing dest host key")
+	//}
 	if key.destSite, ok = metricLabel["destSite"]; !ok {
 		return fmt.Errorf("Metric label missing dest site key")
 	}
