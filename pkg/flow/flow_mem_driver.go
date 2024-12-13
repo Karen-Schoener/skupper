@@ -2805,6 +2805,9 @@ func (fc *FlowCollector) needForSiteProcess(flow *FlowRecord, siteId string, sta
 		name = "site-clients"
 	}
 	processName := name + "-" + parts[0]
+        if client && flow.SourceHost {
+                processName = processName + "-" + *flow.SourceHost
+        }
 	diffTime := startTime
 	wait := 120 * oneSecond
 	if fc.startTime > startTime {
