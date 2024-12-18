@@ -2299,14 +2299,14 @@ func (fc *FlowCollector) setupFlowMetrics(va *VanAddressRecord, flow *FlowRecord
 	if key.sourceHost, ok = metricLabel["sourceHost"]; !ok {
 		return fmt.Errorf("Metric label missing source host key")
 	}
-	if key.sourceHost, ok = metricLabel["destHost"]; !ok {
-		return fmt.Errorf("Metric label missing dest host key")
-	}
 	if key.destSite, ok = metricLabel["destSite"]; !ok {
 		return fmt.Errorf("Metric label missing dest site key")
 	}
 	if key.destProcess, ok = metricLabel["destProcess"]; !ok {
 		return fmt.Errorf("Metric label missing dest process key")
+	}
+	if key.destHost, ok = metricLabel["destHost"]; !ok {
+		return fmt.Errorf("Metric label missing dest host key")
 	}
 
 	if flowMetric, ok = va.flowCount[key]; !ok {
