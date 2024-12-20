@@ -994,6 +994,8 @@ func (fc *FlowCollector) updateRecord(record interface{}) error {
 					if current.ProcessId != nil {
 						if process, ok := fc.Processes[*current.ProcessId]; ok {
 							if process.Name == nil || !strings.HasPrefix(*process.Name, "site-servers-") {
+								// To be discussed: consider updating site-servers process to track multiple connectors.
+
 								// site servers can be reused by multiple connectors - do not unbind
 								process.connector = nil
 								process.ProcessBinding = &Unbound
@@ -1841,6 +1843,12 @@ func (fc *FlowCollector) retrieve(request ApiRequest) (*string, error) {
 					if process.connector != nil {
 						process.Addresses = nil
 						if connector, ok := fc.Connectors[*process.connector]; ok {
+							// To be discussed: consider updating site-servers process to track multiple connectors.
+							//                  There is only 1 ProcessRecord for the server-clients.
+							//                  There is only 1 connector per ProcessRecord.
+							//                  For example, if there are 2 external server-vms, then only 1 connector
+							//                  will be associated with that server-clients ProcessRecord.
+							//                  The site-servers process is bound to the first connector / address.
 							if connector.Address != nil && connector.AddressId != nil {
 								addrDetails := *connector.Address + "@" + *connector.AddressId + "@" + *connector.Protocol
 								process.Addresses = append(process.Addresses, &addrDetails)
@@ -2588,6 +2596,7 @@ func (fc *FlowCollector) reconcileConnectorRecords() error {
 						if found {
 							connector.ProcessId = &process.Identity
 							connector.Target = process.Name
+							// TMDPBG here, the process is bound
 							process.connector = &connector.Identity
 							process.ProcessBinding = &Bound
 							if fc.mode == RecordStatus {
