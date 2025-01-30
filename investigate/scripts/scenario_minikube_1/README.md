@@ -14,32 +14,32 @@ kubectl create namespace west
 
 ## Step: create west/secret skupper-site-ca
 ```
-mkdir west
-cd west
-mkdir secrets
-cd secrets
+export TEST_OUTPUT_DIR="$(pwd)/test"
 
-mkdir skupper-site-ca
-cd skupper-site-ca
+export SKUPPER_CA_DIR="${TEST_OUTPUT_DIR}/west/secrets/skupper-site-ca"
+mkdir -p "${SKUPPER_CA_DIR}"
+
+# Verify that SKUPPER_CA_DIR is set
+printenv SKUPPER_CA_DIR
 
 ./skupper_site_ca_generate_artifacts.sh
 
 ./skupper_site_ca_create_secret.sh
 
 kubectl -n west get secrets
-
-export SKUPPER_CA_DIR=$(pwd)
 ```
 
 ## Step: create west/secret skupper-site-service
 ```
-cd west/secrets
+export TEST_OUTPUT_DIR="$(pwd)/test"
+export SKUPPER_CA_DIR="${TEST_OUTPUT_DIR}/west/secrets/skupper-site-ca"
 
-mkdir skupper-site-server
-cd skupper-site-server
+export SKUPPER_SITE_SERVER_DIR="${TEST_OUTPUT_DIR}/west/secrets/skupper-site-server"
+mkdir -p "${SKUPPER_SITE_SERVER_DIR}"
 
 # Verify that SKUPPER_CA_DIR is set
 printenv SKUPPER_CA_DIR
+printenv SKUPPER_SITE_SERVER_DIR
 
 ./skupper_site_server_generate_artifacts.sh
 
@@ -48,19 +48,42 @@ printenv SKUPPER_CA_DIR
 kubectl -n west get secrets
 ```
 
+## Step: skupper -n west init
+```
+kubectl -n west get secret
+
+skupper -n west init
+
+kubectl -n west get secret
+
+kubectl -n west get service
+
+# Confirm that skupper-router service gets expected external-ip
+```
+
+## Step: skupper -n east init
+```
+skupper -n east init
+```
+
 ## Step: create east/secret link1
 ```
-mkdir east
-cd east
-mkdir secrets
-cd secrets
+export TEST_OUTPUT_DIR="$(pwd)/test"
+export SKUPPER_CA_DIR="${TEST_OUTPUT_DIR}/west/secrets/skupper-site-ca"
+
+export SKUPPER_LINK_DIR="${TEST_OUTPUT_DIR}/east/secrets/link1"
+mkdir -p "${SKUPPER_LINK_DIR}"
+
+export SKUPPER_LINK_NAME="link1"
 
 # Verify that SKUPPER_CA_DIR is set
 printenv SKUPPER_CA_DIR
+printenv SKUPPER_LINK_DIR
+printenv SKUPPER_LINK_NAME
 
-./link1_generate_artifacts.sh
+./link_generate_artifacts.sh
 
-./link1_create_secret.sh
+./link_create_secret.sh
 
 kubectl -n east get secrets
 

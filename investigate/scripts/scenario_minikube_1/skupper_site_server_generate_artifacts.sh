@@ -7,6 +7,13 @@ if [ -z "$SKUPPER_CA_DIR" ]; then
   exit 1
 fi
 
+# Check if SKUPPER_SITE_SERVER_DIR is set
+if [ -z "$SKUPPER_SITE_SERVER_DIR" ]; then
+  echo "Error: SKUPPER_SITE_SERVER_DIR environment variable is not set."
+  echo "Please set SKUPPER_SITE_SERVER_DIR to the path of the skupper-site-server directory."
+  exit 1
+fi
+
 # Configuration string for CSR
 CSR_CONFIG="
 [ req ]
@@ -47,15 +54,15 @@ IP.1 = 192.168.49.240
 "
 
 # Generate RSA private key in PKCS#8 format
-openssl genpkey -algorithm RSA -out server-pkcs8.key -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out $SKUPPER_SITE_SERVER_DIR/server-pkcs8.key -pkeyopt rsa_keygen_bits:2048
 
 # Convert to PKCS#1 format using the traditional flag
-openssl rsa -in server-pkcs8.key -out server-pkcs1.key -traditional
-cp server-pkcs1.key tls.key
+openssl rsa -in $SKUPPER_SITE_SERVER_DIR/server-pkcs8.key -out $SKUPPER_SITE_SERVER_DIR/server-pkcs1.key -traditional
+cp $SKUPPER_SITE_SERVER_DIR/server-pkcs1.key $SKUPPER_SITE_SERVER_DIR/tls.key
 
 # Generate the certificate signing request (CSR)
-openssl req -new -key tls.key -out skupper-site-server.csr -config <(echo "$CSR_CONFIG")
+openssl req -new -key $SKUPPER_SITE_SERVER_DIR/tls.key -out $SKUPPER_SITE_SERVER_DIR/skupper-site-server.csr -config <(echo "$CSR_CONFIG")
 
 # Sign the CSR with the skupper-site-ca certificate and key
-openssl x509 -req -in skupper-site-server.csr -CA $SKUPPER_CA_DIR/tls.crt -CAkey $SKUPPER_CA_DIR/tls.key -CAcreateserial -out tls.crt -days 1825 -extensions req_ext -extfile <(echo "$CERT_CONFIG")
+openssl x509 -req -in $SKUPPER_SITE_SERVER_DIR/skupper-site-server.csr -CA $SKUPPER_CA_DIR/tls.crt -CAkey $SKUPPER_CA_DIR/tls.key -CAcreateserial -out $SKUPPER_SITE_SERVER_DIR/tls.crt -days 1825 -extensions req_ext -extfile <(echo "$CERT_CONFIG")
 
