@@ -14,10 +14,19 @@ if [ -z "$SKUPPER_SITE_SERVER_DIR" ]; then
   exit 1
 fi
 
-kubectl create secret tls skupper-site-server \
-  --cert=$SKUPPER_SITE_SERVER_DIR/tls.crt \
-  --key=$SKUPPER_SITE_SERVER_DIR/tls.key \
-  -n west
+# Create a YAML manifest for the secret and place it in SKUPPER_SITE_SERVER_DIR
+cat <<EOF > $SKUPPER_SITE_SERVER_DIR/skupper-site-server-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: skupper-site-server
+  namespace: west
+type: kubernetes.io/tls
+data:
+  tls.crt: $(base64 -w 0 $SKUPPER_SITE_SERVER_DIR/tls.crt)
+  tls.key: $(base64 -w 0 $SKUPPER_SITE_SERVER_DIR/tls.key)
+  ca.crt: $(base64 -w 0 $SKUPPER_CA_DIR/tls.crt)
+EOF
 
-kubectl -n west patch secret skupper-site-server -p "$(printf '{"data":{"ca.crt":"%s"}}' $(base64 -w 0 $SKUPPER_CA_DIR/tls.crt))"
-
+# Apply the secret using the YAML manifest from SKUPPER_SITE_SERVER_DIR
+kubectl apply -f $SKUPPER_SITE_SERVER_DIR/skupper-site-server-secret.yaml
