@@ -274,7 +274,8 @@ mkdir ca_bundle
 
 # NOTE: the intermediate CA certificate must be listed before the root CA certificate in the ca-bundle.
 
-cat ./test1/west/secrets/skupper-site-ca-intermediate/tls.crt ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1.pem
+cat ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1.pem
+cat ./test1/west/secrets/skupper-site-ca-intermediate/tls.crt ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1_with_intermediate.pem
 # cat ./test2/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test2.pem
 # cat ./test1/west/secrets/skupper-site-ca/tls.crt ./test2/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1_test2.pem
 ```
@@ -320,7 +321,8 @@ skupper -n east status -v
 ## Step: patch west/secret/skupper-site-server with set-1 user-supplied certs
 OBSERVATION Note do not delete secret skupper-site-server.  Seems to cause skupper-router error logs if there is no ca in the skupper-site-server secret
 ```
-./skupper_site_server_create_secret_NO_CA.sh
+# ./skupper_site_server_create_secret_NO_CA.sh
+./skupper_site_server_create_secret_NO_CA_TLS_CRT_INCLUDES_INTERMEDIATE_CA.sh
 ```
 
 ## Step: optional: from west skupper-router bash shell, run openssl commands
@@ -342,7 +344,8 @@ kubectl -n east exec -it $(kubectl get -n east pods -l app.kubernetes.io/name=sk
 OBSERVATION Note create connect-token with ca.crt specified.  At the moment, skupper will not configure east/configmap/skupper-ineternal/skrouter.json if ca.crt not set in connection token.
 ```
 # ./link_create_secret_NO_CA.sh
-./link_create_secret.sh
+# ./link_create_secret.sh
+./link_create_secret_TLS_CRT_INCLUDES_INTERMEDIATE_CA.sh
 ```
 
 ## Step: verify sites are linked
