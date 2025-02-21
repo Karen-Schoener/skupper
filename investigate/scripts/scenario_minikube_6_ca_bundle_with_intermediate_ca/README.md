@@ -47,17 +47,78 @@ kubectl create namespace west
    ./user_supplied_ca_intermediate_generate_artifacts.sh
 
    # ./skupper_site_server_generate_artifacts.sh 192.168.49.240
-     ./skupper_site_server_generate_artifacts.sh mytest-skupper-router-west.local # defaults to signing with intermediate CA
+   #  ./skupper_site_server_generate_artifacts.sh mytest-skupper-router-west.local # defaults to signing with intermediate CA
 
      ./skupper_site_server_generate_artifacts.sh mytest-skupper-router-west.local intermediate
-     ./skupper_site_server_generate_artifacts.sh mytest-skupper-router-west.local root
+   #  ./skupper_site_server_generate_artifacts.sh mytest-skupper-router-west.local root
 
 
 
-   ./link_generate_artifacts.sh # defaults to signing with intermediate CA
+   # ./link_generate_artifacts.sh # defaults to signing with intermediate CA
    ./link_generate_artifacts.sh intermediate
-   ./link_generate_artifacts.sh root
+   # ./link_generate_artifacts.sh root
 ```
+
+## Step: debug commands to verify root CA fields
+
+### To verify that the certificate is signed by root CA:
+
+```
+$ openssl x509 -in "$SKUPPER_CA_DIR/tls.crt" -noout -issuer -subject
+issuer=CN = my-root-ca-cert
+subject=CN = my-root-ca-cert
+```
+
+### To verify that the certificate is marked as a CA certificate:
+
+```
+$ openssl x509 -in "$SKUPPER_CA_DIR/tls.crt" -noout -text | grep -A 1 "Basic Constraints"
+            X509v3 Basic Constraints: critical
+                CA:TRUE
+```
+
+### To verify the certificate's lifetime:
+```
+$ openssl x509 -in "$SKUPPER_CA_DIR/tls.crt" -noout -startdate -enddate
+notBefore=Feb 20 22:15:00 2025 GMT
+notAfter=Feb 20 22:15:00 2026 GMT
+```
+
+## Step: debug commands to verify intermediate CA fields
+
+### To verify that the certificate is self-signed (issuer and subject are the same):
+
+```
+$ openssl x509 -in "$SKUPPER_CA_INTERMEDIATE_DIR/tls.crt" -noout -issuer -subject
+issuer=CN = my-root-ca-cert
+subject=CN = my-root-ca-cert
+```
+
+### To verify that the certificate is marked as a CA certificate:
+
+```
+$ openssl x509 -in "$SKUPPER_CA_INTERMEDIATE_DIR/tls.crt" -noout -text | grep -A 1 "Basic Constraints"
+            X509v3 Basic Constraints:
+                CA:TRUE, pathlen:0
+```
+
+Note: CA:TRUE: This indicates that the certificate is indeed a CA certificate, meaning it can be used to sign other certificates.
+
+Note: pathlen:0: This constraint specifies that the intermediate CA cannot issue other intermediate CA certificates. It can only issue end-entity (leaf) certificates. Essentially, the certificate chain cannot extend beyond this intermediate CA.
+
+### To verify the certificate's lifetime:
+```
+$ openssl x509 -in "$SKUPPER_CA_INTERMEDIATE_DIR/tls.crt" -noout -startdate -enddate
+notBefore=Feb 20 22:21:57 2025 GMT
+notAfter=Feb 20 22:21:57 2026 GMT
+```
+
+### To verify the the trust chain:
+```
+$ openssl verify -CAfile $SKUPPER_CA_DIR/tls.crt $SKUPPER_CA_INTERMEDIATE_DIR/tls.crt
+./test1/west/secrets/skupper-site-ca-intermediate/tls.crt: OK
+```
+
 
 ## Step: debug commands to verify that intermediate ca was created
 
@@ -87,7 +148,7 @@ Certificate:
         Serial Number:
             16:b3:09:c4:f9:b7:94:da:11:23:a2:d3:6b:11:65:dd:6f:a9:3d:c7
         Signature Algorithm: sha256WithRSAEncryption
-        Issuer: CN = my-cert
+        Issuer: CN = my-root-ca-cert
         Validity
             Not Before: Feb 19 15:05:39 2025 GMT
             Not After : Feb 19 15:05:39 2026 GMT
@@ -121,7 +182,7 @@ Certificate:
             X509v3 Subject Key Identifier:
                 24:96:E1:71:DD:82:30:C3:27:08:A3:D7:94:B7:04:C6:56:0E:0E:42
             X509v3 Authority Key Identifier:
-                DirName:/CN=my-cert
+                DirName:/CN=my-root-ca-cert
                 serial:05:CE:3E:B2:F6:9F:1D:60:7E:FF:44:0F:89:24:1B:C9:F1:E8:84:FF
     Signature Algorithm: sha256WithRSAEncryption
     Signature Value:
@@ -161,10 +222,10 @@ Notes on checking: Authority Key Identifier:
 $ openssl x509 -in $SKUPPER_CA_INTERMEDIATE_DIR/tls.crt -text -noout
 
 In the intermediate CA:
-    Issuer: This confirms that the Intermediate CA certificate was issued by "my-cert".
+    Issuer: This confirms that the Intermediate CA certificate was issued by "my-root-ca-cert".
     Subject: The subject of the Intermediate CA certificate is "Intermediate-CA".
     Subject Key Identifier: This value is 24:96:E1:71:DD:82:30:C3:27:08:A3:D7:94:B7:04:C6:56:0E:0E:42.
-    Authority Key Identifier: This confirms that the Intermediate CA certificate was issued by "my-cert".
+    Authority Key Identifier: This confirms that the Intermediate CA certificate was issued by "my-root-ca-cert".
 
 $ openssl x509 -in $SKUPPER_SITE_SERVER_DIR/tls.crt -text -noout              
 
@@ -251,6 +312,21 @@ What to look for:
     Authority Key Identifier: <matches intermediate CA: Subject Key Identifier>
 ```
 
+## Step: debug commands to verify the chain for the link certificate
+
+### Option 1: create ca-chain.pem file
+```
+cat $SKUPPER_CA_DIR/tls.crt $SKUPPER_CA_INTERMEDIATE_DIR/tls.crt > $TEST_OUTPUT_DIR/tmp-ca-chain.pem
+openssl verify -CAfile $TEST_OUTPUT_DIR/tmp-ca-chain.pem test1/east/secrets/link1/tls.crt
+rm $TEST_OUTPUT_DIR/tmp-ca-chain.pem
+```
+
+### Option 2: specify ca and intermediate CA certificate at command line
+```
+$ openssl verify -CAfile $SKUPPER_CA_DIR/tls.crt -untrusted $SKUPPER_CA_INTERMEDIATE_DIR/tls.crt test1/east/secrets/link1/tls.crt
+test1/east/secrets/link1/tls.crt: OK
+```
+
 ## Step: generate credentials: set 2
 ```
    export TEST_OUTPUT_DIR="./test2"
@@ -275,7 +351,7 @@ mkdir ca_bundle
 # NOTE: the intermediate CA certificate must be listed before the root CA certificate in the ca-bundle.
 
 cat ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1.pem
-cat ./test1/west/secrets/skupper-site-ca-intermediate/tls.crt ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1_with_intermediate.pem
+#cat ./test1/west/secrets/skupper-site-ca-intermediate/tls.crt ./test1/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1_with_intermediate.pem
 # cat ./test2/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test2.pem
 # cat ./test1/west/secrets/skupper-site-ca/tls.crt ./test2/west/secrets/skupper-site-ca/tls.crt > ca_bundle/ca_bundle_test1_test2.pem
 ```
@@ -289,11 +365,13 @@ test1/east/secrets/link1/tls.crt: OK
 ## Step: create skupper site west
 ```
 skupper -n west init
+skupper -n west status
 ```
 
 ## Step: create skupper site east
 ```
 skupper -n east init
+skupper -n east status
 ```
 
 ## Step: verify no CA errors in skupper-router logs

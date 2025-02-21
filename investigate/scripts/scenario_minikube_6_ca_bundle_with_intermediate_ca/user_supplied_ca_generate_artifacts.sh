@@ -13,7 +13,7 @@ echo "Using SKUPPER_CA_DIR: $SKUPPER_CA_DIR"
 mkdir -p "$SKUPPER_CA_DIR"
 
 # Default values (can be overridden by arguments)
-CN=${1:-my-cert}
+CN=${1:-my-root-ca-cert}
 DAYS=365
 
 # Configuration string for CSR
@@ -24,6 +24,13 @@ prompt = no
 
 [ req_distinguished_name ]
 CN = $CN
+"
+
+# Configuration string for the certificate
+CERT_CONFIG="
+[ x509_exts ]
+basicConstraints = critical,CA:TRUE
+keyUsage = critical,keyCertSign,cRLSign
 "
 
 # Generate RSA private key in PKCS#8 format
@@ -47,8 +54,8 @@ fi
 # Inspect the CSR to verify its contents
 openssl req -text -noout -verify -in "$SKUPPER_CA_DIR/tls.csr" 2>&1 | tee -a "$SKUPPER_CA_DIR/csr_debug.log"
 
-# Generate the self-signed certificate
-openssl x509 -req -days "$DAYS" -in "$SKUPPER_CA_DIR/tls.csr" -signkey "$SKUPPER_CA_DIR/tls.key" -out "$SKUPPER_CA_DIR/tls.crt" 2>&1 | tee "$SKUPPER_CA_DIR/tls_crt_debug.log"
+# Generate the self-signed certificate with CA:TRUE
+openssl x509 -req -days "$DAYS" -in "$SKUPPER_CA_DIR/tls.csr" -signkey "$SKUPPER_CA_DIR/tls.key" -out "$SKUPPER_CA_DIR/tls.crt" -extfile <(echo "$CERT_CONFIG") -extensions x509_exts 2>&1 | tee "$SKUPPER_CA_DIR/tls_crt_debug.log"
 
 # Check if the certificate generation was successful
 if [ ! -f "$SKUPPER_CA_DIR/tls.crt" ]; then
