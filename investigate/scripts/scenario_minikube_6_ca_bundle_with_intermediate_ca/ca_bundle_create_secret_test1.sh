@@ -41,7 +41,18 @@ EOF
 echo "$SECRET_MANIFEST" | kubectl -n west apply -f -
 echo "$SECRET_MANIFEST" | kubectl -n east apply -f -
 
-kubectl -n west get pods -l skupper.io/component=router -o jsonpath="{.items[0].metadata.name}" | xargs -I{} kubectl -n west annotate pod {} testing-secret-updated/force-reconcile=$(date +%s) --overwrite
+# Function to check and annotate pods
+annotate_pods() {
+  local namespace=$1
+  local pod=$(kubectl -n $namespace get pods -l skupper.io/component=router -o jsonpath="{.items[0].metadata.name}" 2>/dev/null)
 
-kubectl -n east get pods -l skupper.io/component=router -o jsonpath="{.items[0].metadata.name}" | xargs -I{} kubectl -n east annotate pod {} testing-secret-updated/force-reconcile=$(date +%s) --overwrite
+  if [ -n "$pod" ]; then
+    kubectl -n $namespace annotate pod $pod testing-secret-updated/force-reconcile=$(date +%s) --overwrite
+  else
+    echo "No pods found in namespace $namespace with label skupper.io/component=router"
+  fi
+}
 
+# Annotate pods in the west and east namespaces
+annotate_pods west
+annotate_pods east
